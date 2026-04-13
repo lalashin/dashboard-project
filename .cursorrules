@@ -1,0 +1,47 @@
+# 코딩 가이드 (대시보드 프로젝트)
+
+`CLAUDE.md` 및 `docs/` 설계·계획 문서와 함께 적용한다.
+
+---
+
+## UI/UX 디자인 시스템
+
+- **Theme**: 하이엔드 다크 네이비 `#0f172a` 기반 글래스모피즘.
+- **Accent**: Teal `#2dd4bf`, Amber `#fbbf24`.
+- **카드**: `backdrop-filter` blur **12px**, 얇은 border로 깊이감.
+- **데이터 수치**: 과하지 않은 **Glow**로 강조 (일관된 톤 유지).
+
+---
+
+## 소스 코드 무결성
+
+- **전면 재작성 금지**. 요청 범위에 대해서만 **부분 수정(Incremental update)**.
+- **기존 디렉터리·파일 역할·로직 흐름**을 최우선으로 유지하고, 같은 스타일로 맞출 것.
+
+---
+
+## 기술 스택·구현
+
+- **Stack**: Vanilla JS(ES6+), **Supabase** SDK, **Chart.js**.
+- **파일명**: kebab-case (`app.js`, `main.css` 등 프로젝트 관례 유지).
+- **함수·변수**: camelCase; **상수**: `UPPER_SNAKE_CASE` (프로젝트 기존 규칙 준수).
+- **주석**: **한국어**로 작성. *무엇*보다 **왜 그렇게 했는지*(의도·제약)* 를 짧게 명시.
+
+---
+
+## 참조 원칙 (PDCA / docs)
+
+- 코드·리팩터 제안 전 **`docs/` 현재 단계**를 확인할 것:
+  - `docs/01-plan/features/` → 계획
+  - `docs/02-design/features/` → 설계
+  - `docs/03-do/features/` → 구현(Do)
+  - `docs/04-analysis/` → 분석(Check)
+  - `docs/05-report/` → 보고(Report)
+  - `docs/compact/` → 세션 요약(있을 때)
+- **Plan → Design → Do** 범위에서 벗어난 기능·스펙 변경은 하지 말고, 불명확하면 문서·요청자와 맞춘 뒤 진행.
+
+---
+
+## 한 줄 요약
+
+다크 네이비 글래스 UI 규칙을 지키고, **문서 단계에 맞춰** Vanilla JS + Supabase + Chart.js로 **최소 변경**만 한다.
