@@ -313,52 +313,108 @@ function renderRevenueChart(json) {
     window.revenueChartInstance.destroy();
   }
 
+  // 다중 라인 차트를 위해 트렌드 데이터 추출
+  const visitorValues = trend.visitors || [];
+  const orderValues = trend.orders || [];
+
   window.revenueChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
         {
-          label: '매출',
+          label: '매출 (원)',
           data: revenueValues,
           borderColor: '#a78bfa',
-          backgroundColor: 'rgba(167, 139, 250, 0.22)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointHoverRadius: 6,
+          backgroundColor: 'rgba(167, 139, 250, 0.08)',
+          borderWidth: 3,
+          fill: false,
+          tension: 0.4,
+          pointRadius: 5,
+          pointHoverRadius: 7,
           pointBackgroundColor: '#a78bfa',
           pointBorderColor: '#1a1a2e',
           pointBorderWidth: 2,
+          yAxisID: 'y',
+        },
+        {
+          label: '방문자 (명)',
+          data: visitorValues,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.08)',
+          borderWidth: 3,
+          fill: false,
+          tension: 0.4,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#3b82f6',
+          pointBorderColor: '#1a1a2e',
+          pointBorderWidth: 2,
+          yAxisID: 'y1',
+        },
+        {
+          label: '신규고객 (명)',
+          data: orderValues,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.08)',
+          borderWidth: 3,
+          fill: false,
+          tension: 0.4,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#10b981',
+          pointBorderColor: '#1a1a2e',
+          pointBorderWidth: 2,
+          yAxisID: 'y2',
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      aspectRatio: 2,
+      aspectRatio: 2.2,
       interaction: {
         mode: 'index',
         intersect: false,
       },
       plugins: {
         legend: {
+          display: true,
+          position: 'top',
           labels: {
             color: '#eee',
-            font: { size: 12 },
+            font: { size: 12, weight: 'bold' },
+            padding: 15,
+            usePointStyle: true,
+            pointStyle: 'circle',
           },
         },
         tooltip: {
+          enabled: true,
           backgroundColor: 'rgba(26, 26, 46, 0.95)',
-          titleColor: '#eee',
-          bodyColor: '#eee',
-          borderColor: 'rgba(167, 139, 250, 0.4)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: 'rgba(167, 139, 250, 0.5)',
           borderWidth: 1,
+          padding: 10,
+          displayColors: true,
           callbacks: {
+            title(ctx) {
+              return `📅 ${ctx[0].label}`;
+            },
             label(ctx) {
               const v = ctx.parsed.y;
-              return v != null ? `매출: ${Number(v).toLocaleString('ko-KR')}원` : '';
+              if (v == null) return '';
+              if (ctx.datasetIndex === 0) {
+                return `💰 매출: ${Number(v).toLocaleString('ko-KR')}원`;
+              }
+              if (ctx.datasetIndex === 1) {
+                return `👥 방문자: ${Number(v).toLocaleString('ko-KR')}명`;
+              }
+              if (ctx.datasetIndex === 2) {
+                return `🆕 신규고객: ${Number(v).toLocaleString('ko-KR')}명`;
+              }
+              return `값: ${Number(v).toLocaleString('ko-KR')}`;
             },
           },
         },
@@ -371,16 +427,27 @@ function renderRevenueChart(json) {
           },
           ticks: {
             color: '#a8a8b8',
-            maxRotation: 0,
+            maxRotation: 45,
+            font: { size: 11 },
           },
         },
         y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: {
+            display: true,
+            text: '매출 (원)',
+            color: '#a78bfa',
+            font: { size: 12, weight: 'bold' },
+          },
           grid: {
             color: 'rgba(255, 255, 255, 0.08)',
             drawBorder: false,
           },
           ticks: {
             color: '#a8a8b8',
+            font: { size: 11 },
             callback: (raw) => {
               const value = Number(raw);
               if (value >= 100000000) {
@@ -391,6 +458,35 @@ function renderRevenueChart(json) {
               }
               return value.toLocaleString('ko-KR');
             },
+          },
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: {
+            display: true,
+            text: '방문자 (명)',
+            color: '#3b82f6',
+            font: { size: 12, weight: 'bold' },
+          },
+          grid: {
+            drawOnChartArea: false,
+          },
+          ticks: {
+            color: '#a8a8b8',
+            font: { size: 11 },
+            callback: (raw) => Number(raw).toLocaleString('ko-KR'),
+          },
+        },
+        y2: {
+          type: 'linear',
+          display: false,
+          position: 'right',
+          ticks: {
+            color: '#10b981',
+            font: { size: 11 },
+            callback: (raw) => Number(raw).toLocaleString('ko-KR'),
           },
         },
       },
