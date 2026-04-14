@@ -190,11 +190,30 @@ async function fetchSupabaseData(days = 7) {
   }
 
   try {
+    // 현재 날짜 기준으로 N일 전 날짜 계산
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - days);
+
+    // YYYY-MM-DD 형식으로 변환
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const startDateStr = formatDate(startDate);
+    const todayStr = formatDate(today);
+
+    console.log(`[Supabase] ${days}일 데이터 조회 시작: ${startDateStr} ~ ${todayStr}`);
+
     const { data, error } = await supabase
       .from('dashboard_data')
       .select('*')
-      .order('date', { ascending: true })  // 오름차순: 오래된 것부터
-      .limit(days);  // 지정한 일수만큼 조회
+      .gte('date', startDateStr)  // 시작일 이상
+      .lte('date', todayStr)      // 오늘 이하
+      .order('date', { ascending: true });  // 오름차순: 오래된 것부터
 
     if (error) {
       console.error('[Supabase] 쿼리 실패:', error);
@@ -202,13 +221,14 @@ async function fetchSupabaseData(days = 7) {
     }
 
     if (!data || data.length === 0) {
-      console.warn('[Supabase] 반환된 데이터가 없습니다.');
+      console.warn(`[Supabase] ${startDateStr}~${todayStr} 범위에 데이터가 없습니다.`);
       return null;
     }
 
     console.log(`[Supabase] ${days}일 데이터 로드 성공:`, {
       rowCount: data.length,
       dateRange: `${data[0].date} ~ ${data[data.length - 1].date}`,
+      data: data,
     });
     return data;
   } catch (e) {
@@ -560,16 +580,23 @@ async function initDashboard() {
 function setupFilterButtons() {
   const filterButtons = document.querySelectorAll('.filter-btn');
 
+  console.log('[App] 필터 버튼 이벤트 리스너 등록:', filterButtons.length);
+
   filterButtons.forEach((button) => {
     button.addEventListener('click', async (event) => {
+      event.preventDefault();
       const days = parseInt(event.target.dataset.days, 10);
+
+      console.log(`[App] 필터 버튼 클릭: ${days}일`);
 
       // 활성 버튼 스타일 변경
       filterButtons.forEach((btn) => btn.classList.remove('active'));
       event.target.classList.add('active');
 
       // 데이터 로드
+      console.log(`[App] ${days}일 데이터 로드 시작...`);
       await loadDashboardByDays(days);
+      console.log(`[App] ${days}일 데이터 로드 완료!`);
     });
   });
 
@@ -577,6 +604,7 @@ function setupFilterButtons() {
   const firstButton = document.querySelector('.filter-btn[data-days="7"]');
   if (firstButton) {
     firstButton.classList.add('active');
+    console.log('[App] 초기 활성 버튼 설정 완료: 7일');
   }
 }
 
