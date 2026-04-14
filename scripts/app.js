@@ -400,6 +400,43 @@ function renderRevenueChart(json) {
 }
 
 /**
+ * .limit(days) 방식으로 최근 N개 행을 조회해 대시보드를 렌더링합니다.
+ * @param {number} days - 가져올 행 수 (7, 30, 90)
+ * @returns {Promise<void>}
+ */
+async function loadDashboardData(days = 7) {
+  try {
+    console.log(`[App] loadDashboardData: 최근 ${days}개 행 조회`);
+    const { data, error } = await import('./supabase.js').then(({ supabase }) =>
+      supabase
+        .from('dashboard_data')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(days),
+    );
+
+    if (error || !data || data.length === 0) {
+      console.warn('[App] loadDashboardData: 데이터 없음, loadDashboardByDays로 폴백');
+      await loadDashboardByDays(days);
+      return;
+    }
+
+    // ascending 순으로 정렬 (오래된 → 최신)
+    const sorted = [...data].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const json = transformSupabaseData(sorted, days);
+    if (json) {
+      setActiveFilter(days);
+      renderKpiCards(json);
+      renderTrendTable(json);
+      renderRevenueChart(json);
+    }
+  } catch (e) {
+    console.error('[App] loadDashboardData 오류:', e);
+    await loadDashboardByDays(days);
+  }
+}
+
+/**
  * 지정된 일수의 데이터로 대시보드를 렌더링합니다.
  * @param {number} days - 조회할 일수 (7, 30, 90)
  * @returns {Promise<void>}
@@ -451,6 +488,20 @@ async function initDashboard() {
 }
 
 /**
+ * 지정된 days에 해당하는 필터 버튼을 활성화하고 나머지는 비활성화합니다.
+ * @param {number} days - 활성화할 버튼의 data-days 값
+ */
+function setActiveFilter(days) {
+  document.querySelectorAll('.filter-btn').forEach((btn) => {
+    if (parseInt(btn.dataset.days, 10) === days) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+/**
  * 필터 버튼에 이벤트 리스너를 등록합니다.
  */
 function setupFilterButtons() {
@@ -466,8 +517,7 @@ function setupFilterButtons() {
       console.log(`[App] 필터 버튼 클릭: ${days}일`);
 
       // 활성 버튼 스타일 변경
-      filterButtons.forEach((btn) => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      setActiveFilter(days);
 
       // 데이터 로드
       console.log(`[App] ${days}일 데이터 로드 시작...`);
@@ -477,11 +527,8 @@ function setupFilterButtons() {
   });
 
   // 초기 활성 버튼 설정 (7일)
-  const firstButton = document.querySelector('.filter-btn[data-days="7"]');
-  if (firstButton) {
-    firstButton.classList.add('active');
-    console.log('[App] 초기 활성 버튼 설정 완료: 7일');
-  }
+  setActiveFilter(7);
+  console.log('[App] 초기 활성 버튼 설정 완료: 7일');
 }
 
 document.addEventListener('DOMContentLoaded', initDashboard);

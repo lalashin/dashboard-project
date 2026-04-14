@@ -342,3 +342,116 @@ dashboard-project/
 4. 충분한 구현 후 `/pdca analyze dashboard`로 Gap 분석 재실행
 
 **마지막 업데이트**: 2026-04-14 (세션 3차 compact 이후)
+
+---
+
+---
+
+## 🔄 세션 4차 진행 경과 (필터 버튼 체크리스트 완료)
+
+**세션 날짜**: 2026-04-14  
+**세션 ID**: 4차 (compact 이후 재개)
+
+### 세션 목표 및 결과
+
+| 항목 | 내용 |
+|------|------|
+| **주요 목표** | 필터 버튼 관련 7개 체크리스트 항목 완료 |
+| **최종 상태** | 7개 항목 전부 완료 (3개 신규 구현, 4개 기존 구현 확인) |
+| **미커밋 파일** | 5개 (사용자 요청 시 커밋 예정) |
+
+### 완료된 체크리스트 (7개)
+
+| 항목 | 처리 방식 | 상태 |
+|------|-----------|------|
+| index.html 필터 버튼 3개 (7일/30일/90일) | 이미 구현 확인 | ✅ |
+| CSS 활성 버튼 보라색 배경 | `#a78bfa`로 신규 변경 | ✅ |
+| app.js 이벤트 리스너 | 이미 구현 확인 (setupFilterButtons) | ✅ |
+| loadDashboardData(days) `.limit(days)` 방식 | 신규 함수 추가 | ✅ |
+| setActiveFilter(days) 토글 함수 | 신규 독립 함수 분리 | ✅ |
+| 클릭 시 차트+테이블 업데이트 | 이미 구현 확인 | ✅ |
+| 기존 차트 destroy 후 재생성 | 이미 구현 확인 | ✅ |
+
+### 코드 변경 상세
+
+#### `styles/main.css` — 활성 버튼 색상 변경
+```css
+/* 변경 전: 청록색(accent) */
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+/* 변경 후: 보라색 */
+.filter-btn.active {
+  background: #a78bfa;
+  border-color: #a78bfa;
+  color: #1a1a2e;
+  font-weight: 600;
+}
+```
+
+#### `scripts/app.js` — 신규 추가 함수 2개
+
+**loadDashboardData(days)** — `.limit(days)` 방식 조회
+```javascript
+async function loadDashboardData(days = 7) {
+  try {
+    const { data, error } = await import('./supabase.js').then(({ supabase }) =>
+      supabase
+        .from('dashboard_data')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(days),
+    );
+    if (error || !data || data.length === 0) {
+      await loadDashboardByDays(days);
+      return;
+    }
+    const sorted = [...data].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const json = transformSupabaseData(sorted, days);
+    if (json) {
+      setActiveFilter(days);
+      renderKpiCards(json);
+      renderTrendTable(json);
+      renderRevenueChart(json);
+    }
+  } catch (e) {
+    await loadDashboardByDays(days);
+  }
+}
+```
+
+**setActiveFilter(days)** — 활성 버튼 토글 독립 함수
+```javascript
+function setActiveFilter(days) {
+  document.querySelectorAll('.filter-btn').forEach((btn) => {
+    if (parseInt(btn.dataset.days, 10) === days) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+```
+
+### 현재 미커밋 파일 상태 (5개)
+
+| 파일 | 변경 내용 | 상태 |
+|------|-----------|------|
+| `scripts/supabase.js` | credentials 직접 하드코딩 | ⏳ 미커밋 |
+| `scripts/app.js` | loadDashboardData + setActiveFilter 추가 | ⏳ 미커밋 |
+| `docs/SUPABASE_SQL_QUERIES.md` | 30일 INSERT SQL 쿼리 | ⏳ 미커밋 |
+| `docs/compact/20260414_session_summary.md` | 세션 2·3·4차 내용 추가 | ⏳ 미커밋 |
+| `styles/main.css` | 활성 버튼 보라색 변경 | ⏳ 미커밋 |
+
+### 다음 세션 재개 가이드
+
+1. 미커밋 파일 5개 커밋 여부 사용자 확인
+2. 90일 데이터 추가 시 `docs/SUPABASE_SQL_QUERIES.md` SQL 참고
+3. 다음 실습 주제 사용자 안내 대기
+4. 충분한 구현 후 `/pdca analyze dashboard`로 Gap 분석 재실행
+
+**마지막 업데이트**: 2026-04-14 (세션 4차 compact 이후)

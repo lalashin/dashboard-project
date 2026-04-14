@@ -117,8 +117,8 @@ body {
 }
 
 .filter-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #a78bfa;
+  border-color: #a78bfa;
   color: #1a1a2e;
   font-weight: 600;
 }
@@ -247,6 +247,18 @@ body {
   border-radius: var(--radius);
   border: 1px solid var(--surface-border);
   background: var(--surface);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .metrics-table {
