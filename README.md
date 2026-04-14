@@ -71,6 +71,13 @@ npm run preview   # 빌드 결과 미리보기
 
 ## 환경변수 설정
 
+### 규칙 (필독)
+
+| 규칙 | 설명 |
+|------|------|
+| **`VITE_` 접두사** | Supabase URL·키·테이블명 등 **브라우저 번들에 실릴 설정**은 이름이 반드시 `VITE_`로 시작해야 한다. 그래야 Vite가 `import.meta.env`에 주입한다. |
+| **`.env` 커밋 금지** | **`.env`는 Git에 올리지 않는다.** 저장소에는 `.env.example`만 두고, 로컬·배포 호스트(Vercel 환경 변수 등)에서만 실제 값을 넣는다. |
+
 루트에 `.env` 파일을 만들고 `.env.example`을 참고해 값을 채웁니다.
 
 ```env
@@ -91,7 +98,7 @@ VITE_SUPABASE_METRICS_TABLE=dashboard_data   # 선택. 기본값: dashboard_data
 
 ## 배포 URL
 
-_(추후 추가)_
+[https://dashboard-project-sigma-seven.vercel.app](https://dashboard-project-sigma-seven.vercel.app)
 
 ---
 
