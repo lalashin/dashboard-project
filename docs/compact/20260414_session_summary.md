@@ -682,3 +682,108 @@ function setActiveFilter(days) {
 | pdca-status.json "File has been modified since read" | bkit 훅이 자동으로 파일 수정 | 파일 재Read 후 Edit 재시도 |
 
 **마지막 업데이트**: 2026-04-14 (세션 6차 compact 이후)
+
+---
+
+---
+
+## 🔄 세션 7차 진행 경과 (README 재작성, 보안 검수, Vercel 배포, 커스텀 날짜 버그 수정, 로컬 테스트 환경 복원)
+
+**세션 날짜**: 2026-04-14~15  
+**세션 ID**: 7차 (compact 이후 재개)
+
+### 세션 목표 및 결과
+
+| 항목 | 내용 |
+|------|------|
+| **주요 목표** | README.md 완성, 보안 검수, Vercel 배포, 커스텀 날짜 버그 수정, 로컬 테스트 환경 복원 |
+| **최종 상태** | 배포 완료 ✅, 커스텀 날짜 버그 수정 커밋/푸시 ✅, 로컬 Vite 테스트 가능 ✅ |
+| **배포 URL** | https://dashboard-project-sigma-seven.vercel.app |
+
+### 주요 작업 타임라인
+
+1. **README.md 9개 항목 추가**
+   - 프로젝트 소개(한 줄 요약), 주요 기능 5가지, 기술 스택(Vercel 추가)
+   - 스크린샷 자리표시자 (PC/모바일 — 추후 추가)
+   - 로컬 실행 방법 4단계, 환경변수 설정 규칙 표
+   - 배포 URL, DB 테이블 구조 (CREATE TABLE SQL 포함), MIT 라이선스
+
+2. **Vercel 배포 전 보안 검수 (superpowers 플러그인 활용)**
+
+   | 항목 | 결과 | 비고 |
+   |------|------|------|
+   | API Key 노출 | ⚠️ `supabase.js`에 credentials 하드코딩 발견 | 환경변수로 교체 필수 |
+   | `.env` Git 커밋 | ✅ `.gitignore`에 포함, 커밋 없음 | |
+   | Git 이력 Key 노출 | ⚠️ anon 키가 과거 커밋에 존재 | anon 키 특성상 실질적 위험 낮음 |
+   | Supabase RLS | ✅ SELECT only, INSERT/UPDATE/DELETE 차단 | |
+   | XSS | ✅ `textContent` 사용, `innerHTML` 없음 | |
+   | CORS | ✅ Supabase 기본 설정 | |
+
+3. **`scripts/supabase.js` 환경변수 교체 (보안 수정)**
+   ```js
+   // 수정 전: credentials 하드코딩
+   const SUPABASE_URL = 'https://axkryplbvmwytawkjvri.supabase.co';
+   const SUPABASE_ANON_KEY = 'sb_publishable_...';
+   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+   // 수정 후: 환경변수 + null 가드
+   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+   const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+   const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+     ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+     : null;
+   export { supabase };
+   ```
+
+4. **Git 커밋 및 Vercel 배포**
+   - 변경 파일 전체(2번 선택) 한 번에 커밋
+   - Vercel 대시보드에서 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 환경변수 설정
+   - 배포 URL 확인: `dashboard-project-sigma-seven.vercel.app`
+   - README.md에 배포 URL 추가 후 재커밋/푸시
+
+5. **커스텀 날짜 조회 버그 수정**
+   - **증상**: 커스텀 날짜 선택 후 조회 시 대시보드 작동 불가 (Vercel 배포판)
+   - **원인**: `app.js`가 `transformSupabaseDataForCustomRange`를 import하는데, 커밋된 `db.js`에 해당 함수 없음
+   - **확인**: `git show HEAD:scripts/db.js | grep "export function"` → `invalidateCache`, `transformSupabaseData` 2개만 존재
+   - **수정**: `db.js`(신규 함수 `fetchSupabaseDataByRange`, `transformSupabaseDataForCustomRange`, `addCalendarDaysYmd`, `daysInclusive` 포함) + `app.js`(import 추가) 재커밋/푸시
+   - **커밋 해시**: `2bd7801`
+
+6. **로컬 테스트 환경 복원 (`vite.config.js` 수정)**
+   - **증상**: 로컬 `npm run dev`에서 Supabase 연결 안 됨
+   - **원인**: `vite.config.js`의 `define` 블록이 `process.env`에서 읽는 방식 → 로컬 dev에서 `undefined` 주입
+   - **수정**: `define` 블록 완전 제거 → Vite가 `.env` 자동 읽기
+   ```js
+   // 수정 전 (문제): define 블록으로 process.env 수동 주입
+   define: {
+     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL),
+     'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY),
+   },
+
+   // 수정 후: define 블록 제거 (Vite 자동 읽기)
+   export default defineConfig({
+     server: { port: 3000, open: true },
+     build: { outDir: 'dist', sourcemap: false },
+   });
+   ```
+
+### 현재 미커밋 파일 상태
+
+| 파일 | 변경 내용 | 상태 |
+|------|-----------|------|
+| `vite.config.js` | define 블록 제거 (로컬 테스트 복원) | ⏳ 미커밋 |
+| `docs/compact/20260414_session_summary.md` | 세션 7차 내용 추가 | ⏳ 미커밋 |
+
+### 주요 오류 및 해결책
+
+| 오류 | 원인 | 해결 |
+|------|------|------|
+| 커스텀 날짜 조회 시 대시보드 작동 불가 | `db.js`에 `transformSupabaseDataForCustomRange` 함수 미커밋 | `db.js` + `app.js` 재커밋/푸시 |
+| 로컬 dev에서 Supabase 연결 안 됨 | `vite.config.js` `define` 블록이 `process.env`에서 `undefined` 주입 | `define` 블록 제거 |
+
+### 다음 세션 재개 가이드
+
+1. `vite.config.js` 커밋 및 푸시 (보류 중)
+2. `npm run dev` 로컬 실행 후 커스텀 날짜 조회 테스트 확인
+3. 스크린샷(PC/모바일) 촬영 후 README.md에 추가 (추후)
+
+**마지막 업데이트**: 2026-04-15 (세션 7차 compact 이후)
