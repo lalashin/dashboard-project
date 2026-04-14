@@ -187,6 +187,20 @@ git commit -m "refactor(app): 데이터 로드 함수 분리"
 
 ## 🔄 작업 흐름
 
+### ⚠️ Git 커밋 및 푸시 규칙
+
+**Claude Code의 자동 커밋 및 푸시 정책:**
+
+1. **커밋**: Claude Code가 코드 변경 후 **자동으로 커밋** (Conventional Commits 준수)
+2. **푸시**: **사용자의 명시적 요청이 있을 때만** 원격 저장소에 푸시
+   - "푸시해줘", "push 해줘" 같은 요청이 필요
+   - 커밋만 하고 푸시하지 않는 것이 기본
+
+**이유**: 
+- 로컬에서 변경사항을 여러 번 테스트한 후 최종 결정 후 푸시
+- 불필요한 원격 푸시 방지
+- 코드 리뷰 또는 조정 기회 제공
+
 ### 1단계: 기능 개발
 
 ```bash
@@ -200,10 +214,11 @@ git diff
 # 4. 파일 스테이징
 git add scripts/chart.js styles/main.css
 
-# 5. 커밋
+# 5. 커밋 (Claude Code가 자동 수행)
 git commit -m "feat(chart): 매출 추이 차트 기능 추가"
 
-# 6. 푸시
+# 6. 푸시 (사용자 요청 시에만 수행)
+# → "푸시해줘" 요청이 필요
 git push origin main
 ```
 
