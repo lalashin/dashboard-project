@@ -642,6 +642,13 @@ function setupFilterButtons() {
       event.preventDefault();
       const days = parseInt(event.target.dataset.days, 10);
       console.log(`[App] 필터 버튼 클릭: ${days}일`);
+
+      // 커스텀 날짜 인풋 초기화
+      const startEl = document.getElementById('startDate');
+      const endEl = document.getElementById('endDate');
+      if (startEl) startEl.value = '';
+      if (endEl) endEl.value = '';
+
       setActiveFilter(days);
       invalidateCache();
       await loadDashboardByDays(days);
