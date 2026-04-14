@@ -49,18 +49,29 @@ export function invalidateCache() {
  * @param {string} endDate - YYYY-MM-DD
  * @returns {Promise<Array|null>}
  */
+/**
+ * 커스텀 기간 + 전기(직전 동일 일수) KPI 비교에 필요한 행까지 한 번에 조회합니다.
+ * @param {string} startDate - YYYY-MM-DD (선택 구간 시작)
+ * @param {string} endDate - YYYY-MM-DD (선택 구간 끝)
+ */
 export async function fetchSupabaseDataByRange(startDate, endDate) {
   if (!supabase) {
     console.warn('[Supabase] 클라이언트가 초기화되지 않음.');
     return null;
   }
 
+  const span = daysInclusive(startDate, endDate);
+  const previousEnd = addCalendarDaysYmd(startDate, -1);
+  const rangeStart = addCalendarDaysYmd(previousEnd, -(span - 1));
+
   try {
-    console.log(`[Supabase] 커스텀 범위 조회: ${startDate} ~ ${endDate}`);
+    console.log(
+      `[Supabase] 커스텀+전기 조회: 선택 ${startDate}~${endDate} (+전기 ${rangeStart}~${previousEnd}), 실제 쿼리 ${rangeStart}~${endDate}`,
+    );
     const { data, error } = await supabase
       .from(METRICS_TABLE)
       .select('*')
-      .gte('date', startDate)
+      .gte('date', rangeStart)
       .lte('date', endDate)
       .order('date', { ascending: true });
 
@@ -81,6 +92,20 @@ function formatLocalYmd(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/** YYYY-MM-DD 문자열에 일 수 더하기 (자정 건너뜀 완화로 정오 파싱) */
+function addCalendarDaysYmd(ymdStr, deltaDays) {
+  const d = new Date(`${ymdStr}T12:00:00`);
+  d.setDate(d.getDate() + deltaDays);
+  return formatLocalYmd(d);
+}
+
+/** 시작일~종료일 포함 일수 */
+function daysInclusive(ymdStart, ymdEnd) {
+  const s = new Date(`${ymdStart}T12:00:00`);
+  const e = new Date(`${ymdEnd}T12:00:00`);
+  return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
 }
 
 /**
@@ -263,4 +288,78 @@ export function transformSupabaseData(supabaseData, days = 7) {
   };
 
   return json;
+}
+
+/**
+ * 커스텀 [startDate, endDate] 구간용 변환. "현재"는 선택 구간, "전기"는 그 직전 동일 일수.
+ * fetch는 `fetchSupabaseDataByRange`와 같이 전기 행까지 포함된 배열을 넘겨야 함.
+ * @param {Array} supabaseData
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @returns {Object|null}
+ */
+export function transformSupabaseDataForCustomRange(supabaseData, startDate, endDate) {
+  if (!supabaseData || supabaseData.length === 0) {
+    return null;
+  }
+
+  const span = daysInclusive(startDate, endDate);
+  const previousEndStr = addCalendarDaysYmd(startDate, -1);
+  const previousStartStr = addCalendarDaysYmd(previousEndStr, -(span - 1));
+
+  const inRange = (dateStr, from, to) => dateStr >= from && dateStr <= to;
+
+  const currentRows = supabaseData.filter((r) =>
+    inRange(String(r.date), startDate, endDate),
+  );
+  const previousRows = supabaseData.filter((r) =>
+    inRange(String(r.date), previousStartStr, previousEndStr),
+  );
+
+  if (currentRows.length === 0) {
+    return null;
+  }
+
+  const curRev = sumField(currentRows, 'revenue');
+  const prevRev = sumField(previousRows, 'revenue');
+  const curVis = sumField(currentRows, 'visitors');
+  const prevVis = sumField(previousRows, 'visitors');
+  const curNew = sumField(currentRows, 'new_customers');
+  const prevNew = sumField(previousRows, 'new_customers');
+  const curConv = weightedConversionPercent(currentRows);
+  const prevConv = weightedConversionPercent(previousRows);
+  const convChangePp = curConv - prevConv;
+
+  const sortedCurrent = [...currentRows].sort((a, b) =>
+    String(a.date).localeCompare(String(b.date)),
+  );
+
+  return {
+    kpi: {
+      revenue: {
+        value: curRev,
+        changePercent: relativeChangePercent(curRev, prevRev),
+      },
+      visitors: {
+        value: curVis,
+        changePercent: relativeChangePercent(curVis, prevVis),
+      },
+      conversionRate: {
+        value: curConv,
+        changePercent: convChangePp,
+      },
+      newCustomers: {
+        value: curNew,
+        changePercent: relativeChangePercent(curNew, prevNew),
+      },
+    },
+    trend: {
+      dates: sortedCurrent.map((r) => r.date),
+      revenue: sortedCurrent.map((r) => r.revenue || 0),
+      visitors: sortedCurrent.map((r) => r.visitors || 0),
+      orders: sortedCurrent.map((r) =>
+        Math.round((r.visitors || 0) * ((r.conversion_rate || 0) / 100)),
+      ),
+    },
+  };
 }

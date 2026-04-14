@@ -4,7 +4,13 @@
  */
 
 import Chart from 'chart.js/auto';
-import { fetchSupabaseData, transformSupabaseData, invalidateCache } from './db.js';
+import {
+  fetchSupabaseData,
+  fetchSupabaseDataByRange,
+  transformSupabaseData,
+  transformSupabaseDataForCustomRange,
+  invalidateCache,
+} from './db.js';
 
 const APP_SAMPLE_JSON_URL = 'data/sample.json';
 const PAGE_SIZE = 20;
@@ -670,14 +676,11 @@ function setupFilterButtons() {
       showLoading();
       try {
         invalidateCache();
-        const { fetchSupabaseDataByRange } = await import('./db.js');
+        // 커스텀 구간은 "오늘" 기준이 아니라 선택 start~end + 직전 동일 일수(전기)로 변환해야 함 (db.js)
         const supabaseData = await fetchSupabaseDataByRange(startDate, endDate);
 
         if (supabaseData && supabaseData.length > 0) {
-          const days = Math.round(
-            (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24) + 1,
-          );
-          const json = transformSupabaseData(supabaseData, days);
+          const json = transformSupabaseDataForCustomRange(supabaseData, startDate, endDate);
           if (json) {
             renderKpiCards(json);
             renderTrendTable(json);
