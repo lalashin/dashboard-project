@@ -8,6 +8,26 @@ build/
 .env.*
 !.env.example
 
+# Supabase 브라우저용 로컬 설정 (example 복사 후 사용, 커밋 금지)
+scripts/supabase-config.js
+
+# 보안·자격증명 (키·인증서·토큰 파일 등)
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+*.mobileprovision
+secrets/
+credentials.json
+*-credentials.json
+*.secret
+.netrc
+
 # 로컬 도구 상태 (bkit 플러그인 캐시·세션)
 .bkit/
 
