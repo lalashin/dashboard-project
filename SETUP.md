@@ -20,6 +20,9 @@ npm install
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_public_anon_key_here
+
+# 다른 테이블명만 쓸 때(기본은 dashboard_data). 예: daily_metrics만 있으면
+# VITE_SUPABASE_METRICS_TABLE=daily_metrics
 ```
 
 **Supabase 키 얻는 방법:**
@@ -29,24 +32,22 @@ VITE_SUPABASE_ANON_KEY=your_public_anon_key_here
 
 ### 3단계: Supabase 테이블 생성
 
-Supabase 콘솔에서 다음 SQL을 실행합니다:
+공식 스키마 테이블명은 **`dashboard_data`** (`docs/domain/supabase-sql-api.md` 동일). 새 프로젝트는 콘솔 SQL에서 실행:
 
 ```sql
--- dashboard_data 테이블 생성
-CREATE TABLE dashboard_data (
+CREATE TABLE IF NOT EXISTS dashboard_data (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  date DATE NOT NULL,
-  revenue DECIMAL(15, 2) NOT NULL,
-  visitors INTEGER NOT NULL,
-  conversion_rate DECIMAL(5, 2) NOT NULL,
-  new_customers INTEGER NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  date DATE NOT NULL UNIQUE,
+  revenue DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  visitors INTEGER NOT NULL DEFAULT 0,
+  conversion_rate DECIMAL(5, 2) NOT NULL DEFAULT 0,
+  new_customers INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 인덱스 생성 (성능 향상)
-CREATE INDEX idx_date ON dashboard_data(date DESC);
+CREATE INDEX IF NOT EXISTS idx_dashboard_data_date ON dashboard_data(date DESC);
 
--- RLS 정책 설정 (SELECT 권한만)
 ALTER TABLE dashboard_data ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read"

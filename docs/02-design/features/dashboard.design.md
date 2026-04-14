@@ -47,7 +47,7 @@
                            ↕ (HTTP/Fetch)
 ┌─────────────────────────────────────────────────────────────┐
 │                   Supabase Data Layer                        │
-│       PostgreSQL (daily_metrics table + RLS)                │
+│       PostgreSQL (dashboard_data table + RLS)                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -59,7 +59,7 @@
 | **Logic (MVC Controller)** | 이벤트 처리, 상태 관리 | js/app.js | handleFilterChange(), renderUI(), updateDashboard() |
 | **Model - Chart** | Chart.js 래퍼 | js/chart.js | createChart(), updateChart() |
 | **Model - Data** | DB 통신, 캐싱 | js/db.js | fetchMetrics(), calculateKPIs() |
-| **Data Store** | PostgreSQL 저장소 | Supabase | daily_metrics 테이블 |
+| **Data Store** | PostgreSQL 저장소 | Supabase | dashboard_data 테이블 |
 
 ---
 
@@ -229,12 +229,12 @@ Dashboard (Root)
 2. app.js 초기화
    ↓
 3. db.js fetchMetrics() 호출
-   → Supabase 쿼리: SELECT * FROM daily_metrics WHERE date >= ? ORDER BY date DESC
+   → Supabase 쿼리: SELECT * FROM dashboard_data WHERE date >= ? ORDER BY date DESC
    ↓
 4. 데이터 받음 → 로컬 캐시 저장
    ↓
 5. calculateKPIs() 실행
-   → 이전 기간과 비교하여 변화율 계산
+   → **전기 대비**: 선택한 N일 구간의 합계(전환율은 방문자 가중)를, **바로 직전 동일 N일** 구간과 비교해 변화율 계산 (매출·방문·신규는 증감률 %, 전환율은 퍼센트포인트 차이)
    ↓
 6. UI 렌더링
    ├─ renderKPICards()
@@ -276,7 +276,7 @@ updateDashboard() 호출
 // db.js fetchMetrics() 함수
 async function fetchMetrics(startDate, endDate) {
   const { data, error } = await supabase
-    .from('daily_metrics')
+    .from('dashboard_data')
     .select('*')
     .gte('date', startDate)
     .lte('date', endDate)
@@ -291,31 +291,43 @@ async function fetchMetrics(startDate, endDate) {
 ```
 
 #### KPI 계산 로직
+`currentData` / `previousData`는 각각 **캘린더 N일** 구간의 일별 행 배열(구현: `db.js`의 `transformSupabaseData`).
+
 ```javascript
+function weightedConversionPercent(rows) {
+  const v = rows.reduce((s, d) => s + (d.visitors || 0), 0);
+  if (v <= 0) return 0;
+  const orders = rows.reduce(
+    (s, d) => s + (d.visitors || 0) * ((d.conversion_rate || 0) / 100),
+    0,
+  );
+  return (orders / v) * 100;
+}
+
 function calculateKPIs(currentData, previousData) {
   const currentKPIs = {
-    revenue: currentData.reduce((sum, d) => sum + d.revenue, 0),
-    visitors: currentData.reduce((sum, d) => sum + d.visitors, 0),
-    conversionRate: (currentData[0]?.conversion_rate ?? 0),
-    newCustomers: currentData.reduce((sum, d) => sum + d.new_customers, 0)
+    revenue: currentData.reduce((s, d) => s + d.revenue, 0),
+    visitors: currentData.reduce((s, d) => s + d.visitors, 0),
+    conversionRate: weightedConversionPercent(currentData),
+    newCustomers: currentData.reduce((s, d) => s + d.new_customers, 0),
   };
-  
+
   const previousKPIs = {
-    revenue: previousData.reduce((sum, d) => sum + d.revenue, 0),
-    visitors: previousData.reduce((sum, d) => sum + d.visitors, 0),
-    conversionRate: (previousData[0]?.conversion_rate ?? 0),
-    newCustomers: previousData.reduce((sum, d) => sum + d.new_customers, 0)
+    revenue: previousData.reduce((s, d) => s + d.revenue, 0),
+    visitors: previousData.reduce((s, d) => s + d.visitors, 0),
+    conversionRate: weightedConversionPercent(previousData),
+    newCustomers: previousData.reduce((s, d) => s + d.new_customers, 0),
   };
-  
-  // 변화율 계산
+
   return {
     ...currentKPIs,
     changes: {
-      revenue: ((currentKPIs.revenue - previousKPIs.revenue) / previousKPIs.revenue * 100).toFixed(1),
-      visitors: ((currentKPIs.visitors - previousKPIs.visitors) / previousKPIs.visitors * 100).toFixed(1),
-      conversionRate: (currentKPIs.conversionRate - previousKPIs.conversionRate).toFixed(1),
-      newCustomers: ((currentKPIs.newCustomers - previousKPIs.newCustomers) / previousKPIs.newCustomers * 100).toFixed(1)
-    }
+      revenue: ((currentKPIs.revenue - previousKPIs.revenue) / previousKPIs.revenue) * 100,
+      visitors: ((currentKPIs.visitors - previousKPIs.visitors) / previousKPIs.visitors) * 100,
+      conversionRate: currentKPIs.conversionRate - previousKPIs.conversionRate, // 퍼센트포인트
+      newCustomers:
+        ((currentKPIs.newCustomers - previousKPIs.newCustomers) / previousKPIs.newCustomers) * 100,
+    },
   };
 }
 ```
@@ -717,7 +729,7 @@ VITE_SUPABASE_ANON_KEY=actual_public_key_12345
 
 ```sql
 -- Supabase RLS 정책 (선택사항 - 공개 읽기)
-CREATE POLICY "allow_select_public" ON daily_metrics
+CREATE POLICY "allow_select_public" ON dashboard_data
   FOR SELECT
   USING (true);  -- 모두 읽기 가능 (공개 대시보드)
 ```

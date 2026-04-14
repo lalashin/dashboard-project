@@ -41,8 +41,9 @@ Vercel 배포를 통한 프로덕션 성과 대시보드 운영
   - 방문자 (Visitors): 현재 기간 총 방문 수
   - 전환율 (Conversion Rate): 방문자 대비 구매 비율 (%)
   - 신규고객 (New Customers): 현재 기간 신규 고객 수
+- **전기 대비**: 필터로 고른 **N일 구간**의 위 지표(매출·방문·신규는 기간 합계, 전환율은 방문자 가중 %)를 **바로 직전 동일 N일**과 비교. 매출·방문·신규는 증감 **%**, 전환율은 **퍼센트포인트** 차이.
 - **표시 형식**: 
-  - 지표명, 현재값, 전기 대비 변화율 (%)
+  - 지표명, 현재값, 전기 대비 변화 (위 규칙에 따른 % 또는 p.p.)
   - 변화율 색상: 증가(녹색), 감소(빨강), 무변화(회색)
 
 #### FR-02: 매출 추이 차트
@@ -71,7 +72,7 @@ Vercel 배포를 통한 프로덕션 성과 대시보드 운영
 #### FR-05: Supabase DB 연동
 - **설명**: 클라우드 DB에서 실시간 데이터 조회
 - **상세 요구사항**:
-  - 테이블명: `daily_metrics`
+  - 테이블명: `dashboard_data`
   - 컬럼: `id`, `date`, `revenue`, `visitors`, `conversion_rate`, `new_customers`
   - 인증: Supabase API Key (공개 가능)
   - 에러 처리: 네트워크 실패 시 재시도 로직
@@ -111,10 +112,10 @@ Vercel 배포를 통한 프로덕션 성과 대시보드 운영
 
 ## 4. 데이터 모델
 
-### 4.1 Supabase 테이블: `daily_metrics`
+### 4.1 Supabase 테이블: `dashboard_data`
 
 ```sql
-CREATE TABLE daily_metrics (
+CREATE TABLE dashboard_data (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   date DATE NOT NULL UNIQUE,
   revenue DECIMAL(15, 2) NOT NULL DEFAULT 0,

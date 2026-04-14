@@ -1,10 +1,10 @@
 /**
- * Supabase의 dashboard_data 테이블에서 데이터를 불러와 카드·테이블에 반영합니다.
- * DB 연결 실패 시 sample.json으로 폴백합니다.
+ * 대시보드 UI(Controller): 필터·KPI·테이블·차트. 데이터 조회·변환은 `db.js`.
+ * Supabase 실패 시 sample.json 폴백.
  */
 
-import { supabase } from './supabase.js';
 import Chart from 'chart.js/auto';
+import { fetchSupabaseData, transformSupabaseData } from './db.js';
 
 const APP_SAMPLE_JSON_URL = 'data/sample.json';
 
@@ -176,130 +176,6 @@ function renderTrendTable(json) {
   }
 
   tbody.innerHTML = rows.join('');
-}
-
-/**
- * Supabase dashboard_data 테이블에서 지정한 일수만큼 데이터를 가져옵니다.
- * @param {number} days - 조회할 일수 (7, 30, 90)
- * @returns {Promise<Array|null>}
- */
-async function fetchSupabaseData(days = 7) {
-  if (!supabase) {
-    console.warn('[Supabase] 클라이언트가 초기화되지 않음. sample.json으로 폴백합니다.');
-    return null;
-  }
-
-  try {
-    // 현재 날짜 기준으로 N일 전 날짜 계산
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - days);
-
-    // YYYY-MM-DD 형식으로 변환
-    const formatDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const startDateStr = formatDate(startDate);
-    const todayStr = formatDate(today);
-
-    console.log(`[Supabase] ${days}일 데이터 조회 시작: ${startDateStr} ~ ${todayStr}`);
-
-    const { data, error } = await supabase
-      .from('dashboard_data')
-      .select('*')
-      .gte('date', startDateStr)  // 시작일 이상
-      .lte('date', todayStr)      // 오늘 이하
-      .order('date', { ascending: true });  // 오름차순: 오래된 것부터
-
-    if (error) {
-      console.error('[Supabase] 쿼리 실패:', error);
-      return null;
-    }
-
-    if (!data || data.length === 0) {
-      console.warn(`[Supabase] ${startDateStr}~${todayStr} 범위에 데이터가 없습니다.`);
-      return null;
-    }
-
-    console.log(`[Supabase] ${days}일 데이터 로드 성공:`, {
-      rowCount: data.length,
-      dateRange: `${data[0].date} ~ ${data[data.length - 1].date}`,
-      data: data,
-    });
-    return data;
-  } catch (e) {
-    console.error('[Supabase] 예외 발생:', e);
-    return null;
-  }
-}
-
-/**
- * Supabase 데이터를 app.js 형식으로 변환합니다.
- * @param {Array} supabaseData
- * @returns {Object}
- */
-function transformSupabaseData(supabaseData) {
-  if (!supabaseData || supabaseData.length === 0) {
-    return null;
-  }
-
-  // 날짜 오름차순으로 정렬 (차트 표시용)
-  const sorted = [...supabaseData].reverse();
-
-  // KPI 계산: 최근 데이터 기준
-  const latestRecord = supabaseData[0];
-  const previousRecord = supabaseData.length > 1 ? supabaseData[1] : null;
-
-  const calculateChangePercent = (latest, previous) => {
-    if (!previous) return 0;
-    if (previous === 0) return latest > 0 ? 100 : 0;
-    return ((latest - previous) / previous) * 100;
-  };
-
-  const json = {
-    kpi: {
-      revenue: {
-        value: latestRecord.revenue || 0,
-        changePercent: calculateChangePercent(
-          latestRecord.revenue || 0,
-          previousRecord?.revenue || 0,
-        ),
-      },
-      visitors: {
-        value: latestRecord.visitors || 0,
-        changePercent: calculateChangePercent(
-          latestRecord.visitors || 0,
-          previousRecord?.visitors || 0,
-        ),
-      },
-      conversionRate: {
-        value: latestRecord.conversion_rate || 0,
-        changePercent: calculateChangePercent(
-          latestRecord.conversion_rate || 0,
-          previousRecord?.conversion_rate || 0,
-        ),
-      },
-      newCustomers: {
-        value: latestRecord.new_customers || 0,
-        changePercent: calculateChangePercent(
-          latestRecord.new_customers || 0,
-          previousRecord?.new_customers || 0,
-        ),
-      },
-    },
-    trend: {
-      dates: sorted.map((r) => r.date),
-      revenue: sorted.map((r) => r.revenue || 0),
-      visitors: sorted.map((r) => r.visitors || 0),
-      orders: sorted.map((r) => Math.round((r.visitors || 0) * ((r.conversion_rate || 0) / 100))),
-    },
-  };
-
-  return json;
 }
 
 /**
@@ -537,7 +413,7 @@ async function loadDashboardByDays(days = 7) {
 
     if (supabaseData && supabaseData.length > 0) {
       // Step 2: Supabase 데이터 변환 및 렌더링
-      const json = transformSupabaseData(supabaseData);
+      const json = transformSupabaseData(supabaseData, days);
       if (json) {
         renderKpiCards(json);
         renderTrendTable(json);

@@ -848,7 +848,7 @@ async function fetchMetrics(startDate, endDate) {
     showLoadingSpinner(true);
 
     // Supabase REST API 호출
-    const url = `${SUPABASE_URL}/rest/v1/daily_metrics`;
+    const url = `${SUPABASE_URL}/rest/v1/dashboard_data`;
     const params = new URLSearchParams();
     params.append('date', `gte.${startDate}`);
     params.append('date', `lte.${endDate}`);
@@ -1032,7 +1032,7 @@ let chartInstance = null;
 
 /**
  * 매출 추이 차트 생성
- * @param {Array} data - daily_metrics 배열
+ * @param {Array} data - dashboard_data 배열
  */
 function createChart(data) {
   if (!data || data.length === 0) {
