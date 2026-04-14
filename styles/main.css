@@ -83,7 +83,9 @@ body {
 .filter-section {
   margin-bottom: 1.5rem;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .filter-buttons {
@@ -91,6 +93,44 @@ body {
   gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.custom-date-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.custom-date-picker input[type="date"] {
+  appearance: none;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.custom-date-picker input[type="date"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent-border);
+}
+
+.date-separator {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.active-filter {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-height: 1.2em;
 }
 
 .filter-btn {
@@ -148,6 +188,9 @@ body {
 }
 
 .kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.65rem;
 }
 
@@ -157,6 +200,11 @@ body {
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.02em;
+}
+
+.kpi-icon {
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 .kpi-value {
@@ -295,6 +343,85 @@ body {
 
 .metrics-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   페이지네이션
+   ───────────────────────────────────────────────────────────────── */
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0 0.25rem;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  appearance: none;
+  padding: 0.3rem 0.65rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pagination-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+}
+
+.pagination-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pagination-btn.active {
+  background: #a78bfa;
+  border-color: #a78bfa;
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   로딩 스피너 overlay
+   ───────────────────────────────────────────────────────────────── */
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 46, 0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-overlay[hidden] {
+  display: none;
+}
+
+.loading-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #a78bfa;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ═══════════════════════════════════════════════════════════════

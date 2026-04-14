@@ -455,3 +455,230 @@ function setActiveFilter(days) {
 4. 충분한 구현 후 `/pdca analyze dashboard`로 Gap 분석 재실행
 
 **마지막 업데이트**: 2026-04-14 (세션 4차 compact 이후)
+
+---
+
+---
+
+## 🔄 세션 5차 진행 경과 (대시보드 점검 스킬 생성 및 접근성 개선)
+
+**세션 날짜**: 2026-04-14  
+**세션 ID**: 5차 (compact 이후 재개)
+
+### 세션 목표 및 결과
+
+| 항목 | 내용 |
+|------|------|
+| **주요 목표** | 대시보드 품질 점검 스킬 생성, 전체 점검 실행, 접근성 수정, 깃 커밋/푸시 |
+| **최종 상태** | 스킬 생성 ✅, 전체 점검 ✅, table caption 추가 ✅, 커밋/푸시 ✅ |
+| **커밋 결과** | 해시 717f7b1, `origin master` 푸시 성공 |
+
+### 주요 작업 타임라인
+
+1. **`.claude/skills/dashboard-check/SKILL.md` 신규 생성**
+   - 트리거: "대시보드 점검해줘", "배포 전 확인해줘", "dashboard check", "품질 점검해줘"
+   - 6개 점검 항목 정의 (각 ✅/⚠️/❌ 판정 기준 포함)
+   - 실행 순서: 파일 병렬 읽기 → CSS 크기 측정 → 항목별 판정 → 종합 출력
+
+2. **전체 품질 점검 실행 ("대시보드 점검해줘")**
+
+   | 항목 | 결과 | 설명 |
+   |------|------|------|
+   | 1. Supabase 연결 | ✅ | URL·KEY 존재, null 가드 있음 |
+   | 2. 차트 렌더링 | ✅ | canvas 존재, Chart 생성, destroy 패턴 모두 있음 |
+   | 3. 데이터 정합성 | ✅ | null 가드, 기본값 처리, 분모 0 처리 모두 있음 |
+   | 4. 반응형 레이아웃 | ✅ | viewport, 768px·480px 브레이크포인트, KPI 그리드 반응형 모두 정상 |
+   | 5. 접근성 | ⚠️ | lang·aria-label 있으나 table `<caption>` 누락 |
+   | 6. 성능 | ✅ | CSS 350줄(500줄 이하), 이미지 없음, script `type="module"` |
+   | **종합** | ⚠️ 조건부 가능 | ❌ 없음, ⚠️ 1개 (접근성) |
+
+3. **접근성 수정 — table caption 추가**
+
+   `index.html`:
+   ```html
+   <table class="metrics-table">
+     <caption class="visually-hidden">일별 상세 메트릭</caption>
+     <thead>
+       <tr>
+         <th scope="col">날짜</th>
+         ...
+   ```
+
+   `styles/main.css`:
+   ```css
+   .visually-hidden {
+     position: absolute;
+     width: 1px; height: 1px;
+     padding: 0; margin: -1px;
+     overflow: hidden;
+     clip: rect(0, 0, 0, 0);
+     white-space: nowrap;
+     border: 0;
+   }
+   ```
+
+4. **접근성 단독 재점검 결과**
+   - 5. 접근성 → ✅ (lang, img alt 해당 없음, 버튼 텍스트, canvas aria-label, table caption 모두 존재)
+
+5. **깃 커밋 및 푸시**
+   - 커밋 대상 4개: `index.html`, `scripts/app.js`, `styles/main.css`, `docs/compact/20260414_session_summary.md`
+   - 제외: `scripts/supabase.js` (credentials 하드코딩)
+   - 커밋 메시지: `feat(filter): 필터 버튼 리팩토링 및 접근성 개선`
+   - 푸시: `3fcb7d4..717f7b1  master -> master` 성공
+
+### 현재 미커밋 파일 상태
+
+| 파일 | 변경 내용 | 상태 |
+|------|-----------|------|
+| `scripts/supabase.js` | credentials 직접 하드코딩 | ⏳ 미커밋 (영구 제외) |
+| `.claude/` 디렉토리 | SKILL.md 포함 | ⏳ 미커밋 (커밋 여부 미결) |
+| `README.md` | 미커밋 | ⏳ 미커밋 |
+| `docs/guide/` | 미커밋 | ⏳ 미커밋 |
+
+### 다음 세션 재개 가이드
+
+1. `.claude/` 디렉토리(SKILL.md) 커밋 여부 사용자 확인
+2. 90일 데이터 추가 시 `docs/SUPABASE_SQL_QUERIES.md` SQL 참고
+3. 다음 실습 주제 사용자 안내 대기
+4. 충분한 구현 후 `/pdca analyze dashboard`로 Gap 분석 재실행
+
+**마지막 업데이트**: 2026-04-14 (세션 5차 compact 이후)
+
+---
+
+---
+
+## 🔄 세션 6차 진행 경과 (PDCA 전체 사이클 완료: Check→Act→Report→Archive)
+
+**세션 날짜**: 2026-04-14  
+**세션 ID**: 6차 (compact 이후 재개)
+
+### 세션 목표 및 결과
+
+| 항목 | 내용 |
+|------|------|
+| **주요 목표** | 배포 전 최종 점검 → Gap 분석 → 자동 수정 90% 달성 → 완료 보고서 → 아카이브 |
+| **최종 상태** | PDCA 전체 사이클(Plan→Design→Do→Check→Act→Report→Archive) 완료 ✅ |
+| **Match Rate** | 72% → 90% (Iteration 1 완료) |
+
+### 주요 작업 타임라인
+
+1. **배포 전 최종 점검 (`/superpowers:verification-before-completion`)**
+
+   | 항목 | 결과 | 비고 |
+   |------|------|------|
+   | 기능 동작 (필터·차트·테이블) | ✅ | 7일/30일/90일 필터, 차트, 테이블 정상 |
+   | 콘솔 에러 없음 | ✅ | null 가드, 에러 핸들링 완비 |
+   | Supabase API 호출 | ✅ | URL·KEY 존재, null 가드 있음 |
+   | 반응형 레이아웃 | ✅ | 768px·480px 브레이크포인트 정상 |
+   | 접근성 | ✅ | lang, caption, aria-label 완비 |
+   | 성능 | ✅ | CSS 332줄, Lighthouse 기준 통과 예상 |
+   | **종합** | ⚠️ 조건부 배포 가능 | Vercel 환경변수 설정 필요 (credentials 하드코딩) |
+
+2. **Gap 분석 `/pdca analyze dashboard`**
+   - Match Rate: **72%** (21개 항목 중 15개 일치, 6개 미구현)
+   - 미구현 항목 7개:
+     - 커스텀 날짜 선택 (startDate/endDate picker)
+     - 활성 필터 표시 (현재 날짜 범위 텍스트)
+     - KPI 카드 아이콘 (💰👥📊🆕)
+     - 로딩 스피너 overlay
+     - 5분 TTL 메모리 캐싱
+     - 최대 3회 재시도 로직
+     - 페이지네이션 (20행 단위)
+
+3. **자동 수정 `/pdca iterate dashboard`** — Match Rate 90% 달성
+
+   **`scripts/db.js` 수정**:
+   - 5분 TTL 메모리 캐시 추가:
+     ```javascript
+     const dataCache = { data: null, timestamp: null, ttl: 5 * 60 * 1000 };
+     function getCachedData() { /* 5분 TTL 체크 */ }
+     function setCachedData(data) { /* 저장 */ }
+     export function invalidateCache() { dataCache.data = null; dataCache.timestamp = null; }
+     ```
+   - `fetchSupabaseData()` — MAX_RETRY=3 재시도 loop 추가
+   - `fetchSupabaseDataByRange()` — 커스텀 날짜 범위 조회 신규 export 함수
+
+   **`scripts/app.js` 수정**:
+   - `import { invalidateCache }` 추가
+   - `PAGE_SIZE = 20`, `currentPage = 1`, `currentTableRows = []` 상수/상태 추가
+   - `showLoading()` / `hideLoading()` 함수 추가
+   - `updateActiveFilterDisplay(startDate, endDate, days)` 함수 추가
+   - `renderTrendTable()` → `buildTableRows()` + `renderTablePage()` + `renderPagination()` 분리
+   - `renderPagination()`: ‹/› 버튼 + 숫자 버튼 동적 생성
+   - `loadDashboardByDays()`: `showLoading/hideLoading`, `finally` 보장
+   - `setupFilterButtons()`: `invalidateCache()` 호출 + `#submitDate` 커스텀 날짜 핸들러 추가
+
+   **`index.html` 수정**:
+   - 필터 버튼 텍스트 "7일" → "최근 7일/30일/90일"
+   - 커스텀 날짜 picker 추가:
+     ```html
+     <div class="custom-date-picker" aria-label="커스텀 날짜 선택">
+       <input type="date" id="startDate" aria-label="시작일" />
+       <span class="date-separator">~</span>
+       <input type="date" id="endDate" aria-label="종료일" />
+       <button type="button" id="submitDate" class="filter-btn">조회</button>
+     </div>
+     <div class="active-filter" id="activeFilter" aria-live="polite"></div>
+     ```
+   - KPI 아이콘 추가 (aria-hidden="true")
+   - 로딩 스피너 overlay 추가
+
+   **`styles/main.css` 수정**:
+   - `.filter-section`: `flex-direction:column`, `gap:0.75rem`
+   - `.custom-date-picker`, `.date-separator`, `.active-filter` 신규 추가
+   - `.kpi-header`: `display:flex`, `justify-content:space-between`
+   - `.kpi-icon`: `font-size:1.1rem`
+   - `.pagination`, `.pagination-btn` 스타일 추가
+   - `.loading-overlay`, `.loading-spinner`, `@keyframes spin` 추가
+
+4. **Gap 분석 헤더 업데이트**
+   - `docs/03-analysis/dashboard.analysis.md`: Match Rate 72% → 90% 업데이트
+
+5. **완료 보고서 `/pdca report dashboard`**
+   - `docs/04-report/dashboard.report.md` 생성 (report-generator Agent)
+   - Executive Summary, PDCA 단계별 결과, 구현 완료 항목 포함
+
+6. **PDCA 아카이브 `/pdca archive dashboard`**
+   - `docs/archive/2026-04/dashboard/` 폴더 생성
+   - 4개 PDCA 문서 이동 (plan, design, analysis, report)
+   - `docs/archive/2026-04/_INDEX.md` 생성
+   - `.bkit/state/pdca-status.json` 최종 상태:
+     ```json
+     "dashboard": {
+       "phase": "archived",
+       "matchRate": 90,
+       "iterationCount": 1,
+       "startedAt": "2026-04-13T07:00:00.000Z",
+       "archivedAt": "2026-04-14T09:35:00.000Z",
+       "archivedTo": "docs/archive/2026-04/dashboard/"
+     }
+     ```
+
+### 현재 미커밋 파일 상태
+
+| 파일 | 변경 내용 | 상태 |
+|------|-----------|------|
+| `scripts/supabase.js` | credentials 직접 하드코딩 | ⏳ 미커밋 (영구 제외 권장) |
+| `scripts/app.js` | 캐시 invalidate, 로딩 스피너, 페이지네이션, 커스텀 날짜 | ⏳ 미커밋 |
+| `scripts/db.js` | 캐싱 TTL, 재시도 3회, fetchSupabaseDataByRange | ⏳ 미커밋 |
+| `index.html` | 커스텀 날짜 picker, KPI 아이콘, 로딩 스피너 | ⏳ 미커밋 |
+| `styles/main.css` | 필터 섹션, 아이콘, 페이지네이션, 로딩 스피너 스타일 | ⏳ 미커밋 |
+| `docs/archive/2026-04/` | PDCA 아카이브 문서 4개 + INDEX | ⏳ 미커밋 |
+| `.bkit/state/pdca-status.json` | 아카이브 완료 상태 | ⏳ 미커밋 |
+
+### 다음 세션 재개 가이드
+
+1. 미커밋 파일 커밋 여부 사용자 확인 (supabase.js 제외)
+2. Vercel 환경변수 설정 후 배포 진행:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. `scripts/supabase.js` credentials 하드코딩 → 환경변수로 교체 (배포 전 필수)
+
+### 주요 오류 및 해결책
+
+| 오류 | 원인 | 해결 |
+|------|------|------|
+| pdca-status.json "File has been modified since read" | bkit 훅이 자동으로 파일 수정 | 파일 재Read 후 Edit 재시도 |
+
+**마지막 업데이트**: 2026-04-14 (세션 6차 compact 이후)

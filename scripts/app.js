@@ -4,9 +4,49 @@
  */
 
 import Chart from 'chart.js/auto';
-import { fetchSupabaseData, transformSupabaseData } from './db.js';
+import { fetchSupabaseData, transformSupabaseData, invalidateCache } from './db.js';
 
 const APP_SAMPLE_JSON_URL = 'data/sample.json';
+const PAGE_SIZE = 20;
+
+/** 페이지네이션 상태 */
+let currentPage = 1;
+let currentTableRows = [];
+
+/**
+ * 로딩 스피너 표시
+ */
+function showLoading() {
+  const el = document.getElementById('loadingSpinner');
+  if (el) {
+    el.hidden = false;
+    el.removeAttribute('aria-hidden');
+  }
+}
+
+/**
+ * 로딩 스피너 숨김
+ */
+function hideLoading() {
+  const el = document.getElementById('loadingSpinner');
+  if (el) {
+    el.hidden = true;
+    el.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/**
+ * 활성 필터 텍스트 표시
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @param {number|null} days - 빠른 필터 일수 (null이면 커스텀)
+ */
+function updateActiveFilterDisplay(startDate, endDate, days = null) {
+  const el = document.getElementById('activeFilter');
+  if (!el) return;
+  const label = days ? `${days}일` : '커스텀';
+  el.textContent = `조회기간: ${startDate} ~ ${endDate} (${label})`;
+}
 
 /** data-kpi → sample.json kpi 키 */
 const KPI_KEY_MAP = {
@@ -142,12 +182,12 @@ function renderKpiCards(json) {
 }
 
 /**
+ * 테이블 행 데이터를 생성해 currentTableRows에 저장합니다.
  * @param {{ kpi?: { newCustomers?: { value: number } }, trend: { dates: string[], revenue: number[], visitors: number[], orders: number[] } }} json
  */
-function renderTrendTable(json) {
+function buildTableRows(json) {
   const trend = json.trend;
-  const tbody = document.querySelector('.metrics-table tbody');
-  if (!trend || !tbody) return;
+  if (!trend) return;
 
   const dates = trend.dates || [];
   const revenue = trend.revenue || [];
@@ -158,24 +198,89 @@ function renderTrendTable(json) {
   const totalNew = json.kpi?.newCustomers?.value ?? 0;
   const newPerDay = allocateNewCustomersByOrders(orders.slice(0, n), totalNew);
 
-  const rows = [];
+  currentTableRows = [];
   for (let i = 0; i < n; i += 1) {
     const v = visitors[i];
     const o = orders[i];
     const conv = v > 0 ? (o / v) * 100 : 0;
-
-    rows.push(`
-      <tr>
+    currentTableRows.push(
+      `<tr>
         <td>${formatTableDate(dates[i])}</td>
         <td>${Number(revenue[i]).toLocaleString('ko-KR')}원</td>
         <td>${Number(v).toLocaleString('ko-KR')}명</td>
         <td>${conv.toFixed(2)}%</td>
         <td>${Number(newPerDay[i] ?? 0).toLocaleString('ko-KR')}명</td>
-      </tr>
-    `);
+      </tr>`,
+    );
+  }
+}
+
+/**
+ * 현재 페이지의 테이블 행을 렌더링합니다.
+ */
+function renderTablePage() {
+  const tbody = document.querySelector('.metrics-table tbody');
+  if (!tbody) return;
+
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  tbody.innerHTML = currentTableRows.slice(start, end).join('');
+
+  renderPagination();
+}
+
+/**
+ * 페이지네이션 UI를 렌더링합니다.
+ */
+function renderPagination() {
+  const wrap = document.querySelector('.table-wrap');
+  if (!wrap) return;
+
+  const totalPages = Math.ceil(currentTableRows.length / PAGE_SIZE);
+
+  let pag = wrap.querySelector('.pagination');
+  if (totalPages <= 1) {
+    if (pag) pag.remove();
+    return;
   }
 
-  tbody.innerHTML = rows.join('');
+  if (!pag) {
+    pag = document.createElement('nav');
+    pag.className = 'pagination';
+    pag.setAttribute('aria-label', '테이블 페이지 이동');
+    wrap.appendChild(pag);
+  }
+
+  const buttons = [];
+  buttons.push(
+    `<button type="button" class="pagination-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''} aria-label="이전 페이지">‹</button>`,
+  );
+  for (let p = 1; p <= totalPages; p += 1) {
+    buttons.push(
+      `<button type="button" class="pagination-btn${p === currentPage ? ' active' : ''}" data-page="${p}" aria-label="${p}페이지">${p}</button>`,
+    );
+  }
+  buttons.push(
+    `<button type="button" class="pagination-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''} aria-label="다음 페이지">›</button>`,
+  );
+
+  pag.innerHTML = buttons.join('');
+
+  pag.querySelectorAll('.pagination-btn:not(:disabled)').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentPage = parseInt(btn.dataset.page, 10);
+      renderTablePage();
+    });
+  });
+}
+
+/**
+ * @param {{ kpi?: { newCustomers?: { value: number } }, trend: { dates: string[], revenue: number[], visitors: number[], orders: number[] } }} json
+ */
+function renderTrendTable(json) {
+  currentPage = 1;
+  buildTableRows(json);
+  renderTablePage();
 }
 
 /**
@@ -437,30 +542,42 @@ async function loadDashboardData(days = 7) {
 }
 
 /**
+ * 날짜 범위로 활성 필터 표시를 업데이트하는 헬퍼
+ * @param {number} days
+ */
+function updateFilterDisplayByDays(days) {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - (days - 1));
+  const fmt = (d) => d.toISOString().split('T')[0];
+  updateActiveFilterDisplay(fmt(start), fmt(today), days);
+}
+
+/**
  * 지정된 일수의 데이터로 대시보드를 렌더링합니다.
  * @param {number} days - 조회할 일수 (7, 30, 90)
  * @returns {Promise<void>}
  */
 async function loadDashboardByDays(days = 7) {
+  showLoading();
   try {
     console.log(`[App] ${days}일 데이터로 대시보드 로드 시작...`);
 
-    // Step 1: Supabase에서 데이터 시도
     const supabaseData = await fetchSupabaseData(days);
 
     if (supabaseData && supabaseData.length > 0) {
-      // Step 2: Supabase 데이터 변환 및 렌더링
       const json = transformSupabaseData(supabaseData, days);
       if (json) {
         renderKpiCards(json);
         renderTrendTable(json);
         renderRevenueChart(json);
+        updateFilterDisplayByDays(days);
         console.log(`[App] ${days}일 데이터 렌더링 완료`);
         return;
       }
     }
 
-    // Step 3: 폴백 - sample.json 로드
+    // 폴백 - sample.json 로드
     console.log('[App] Supabase 데이터 없음. sample.json으로 폴백합니다.');
     const res = await fetch(APP_SAMPLE_JSON_URL);
     if (!res.ok) {
@@ -470,8 +587,13 @@ async function loadDashboardByDays(days = 7) {
     renderKpiCards(json);
     renderTrendTable(json);
     renderRevenueChart(json);
+    updateFilterDisplayByDays(days);
   } catch (e) {
     console.error('[App] 데이터 로드 실패:', e);
+    const activeFilter = document.getElementById('activeFilter');
+    if (activeFilter) activeFilter.textContent = '데이터를 불러올 수 없습니다.';
+  } finally {
+    hideLoading();
   }
 }
 
@@ -502,10 +624,10 @@ function setActiveFilter(days) {
 }
 
 /**
- * 필터 버튼에 이벤트 리스너를 등록합니다.
+ * 필터 버튼 및 커스텀 날짜 선택 이벤트 리스너를 등록합니다.
  */
 function setupFilterButtons() {
-  const filterButtons = document.querySelectorAll('.filter-btn');
+  const filterButtons = document.querySelectorAll('.filter-btn[data-days]');
 
   console.log('[App] 필터 버튼 이벤트 리스너 등록:', filterButtons.length);
 
@@ -513,18 +635,67 @@ function setupFilterButtons() {
     button.addEventListener('click', async (event) => {
       event.preventDefault();
       const days = parseInt(event.target.dataset.days, 10);
-
       console.log(`[App] 필터 버튼 클릭: ${days}일`);
-
-      // 활성 버튼 스타일 변경
       setActiveFilter(days);
-
-      // 데이터 로드
-      console.log(`[App] ${days}일 데이터 로드 시작...`);
+      invalidateCache();
       await loadDashboardByDays(days);
-      console.log(`[App] ${days}일 데이터 로드 완료!`);
     });
   });
+
+  // 커스텀 날짜 조회 버튼
+  const submitBtn = document.getElementById('submitDate');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async () => {
+      const startEl = document.getElementById('startDate');
+      const endEl = document.getElementById('endDate');
+      const startDate = startEl?.value;
+      const endDate = endEl?.value;
+
+      if (!startDate || !endDate) {
+        const activeFilter = document.getElementById('activeFilter');
+        if (activeFilter) activeFilter.textContent = '시작일과 종료일을 모두 선택해주세요.';
+        return;
+      }
+      if (startDate > endDate) {
+        const activeFilter = document.getElementById('activeFilter');
+        if (activeFilter) activeFilter.textContent = '시작일이 종료일보다 늦을 수 없습니다.';
+        return;
+      }
+
+      // 빠른 필터 버튼 비활성화 (커스텀 기간이므로)
+      document.querySelectorAll('.filter-btn[data-days]').forEach((btn) => {
+        btn.classList.remove('active');
+      });
+
+      showLoading();
+      try {
+        invalidateCache();
+        const { fetchSupabaseDataByRange } = await import('./db.js');
+        const supabaseData = await fetchSupabaseDataByRange(startDate, endDate);
+
+        if (supabaseData && supabaseData.length > 0) {
+          const days = Math.round(
+            (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24) + 1,
+          );
+          const json = transformSupabaseData(supabaseData, days);
+          if (json) {
+            renderKpiCards(json);
+            renderTrendTable(json);
+            renderRevenueChart(json);
+            updateActiveFilterDisplay(startDate, endDate, null);
+            return;
+          }
+        }
+
+        const activeFilter = document.getElementById('activeFilter');
+        if (activeFilter) activeFilter.textContent = `조회기간: ${startDate} ~ ${endDate} (데이터 없음)`;
+      } catch (e) {
+        console.error('[App] 커스텀 날짜 조회 실패:', e);
+      } finally {
+        hideLoading();
+      }
+    });
+  }
 
   // 초기 활성 버튼 설정 (7일)
   setActiveFilter(7);

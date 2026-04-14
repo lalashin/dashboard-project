@@ -15,10 +15,17 @@
 
       <section class="filter-section" aria-label="기간 필터">
         <div class="filter-buttons" role="group" aria-label="빠른 기간 선택">
-          <button type="button" class="filter-btn" data-days="7">7일</button>
-          <button type="button" class="filter-btn" data-days="30">30일</button>
-          <button type="button" class="filter-btn" data-days="90">90일</button>
+          <button type="button" class="filter-btn" data-days="7">최근 7일</button>
+          <button type="button" class="filter-btn" data-days="30">최근 30일</button>
+          <button type="button" class="filter-btn" data-days="90">최근 90일</button>
         </div>
+        <div class="custom-date-picker" aria-label="커스텀 날짜 선택">
+          <input type="date" id="startDate" aria-label="시작일" />
+          <span class="date-separator">~</span>
+          <input type="date" id="endDate" aria-label="종료일" />
+          <button type="button" id="submitDate" class="filter-btn">조회</button>
+        </div>
+        <div class="active-filter" id="activeFilter" aria-live="polite"></div>
       </section>
 
       <section class="kpi-section" aria-label="주요 지표">
@@ -26,6 +33,7 @@
           <article class="kpi-card" data-kpi="revenue">
             <div class="kpi-header">
               <h2 class="kpi-title">매출</h2>
+              <span class="kpi-icon" aria-hidden="true">💰</span>
             </div>
             <div class="kpi-value" aria-live="polite"></div>
             <div class="kpi-change"></div>
@@ -35,6 +43,7 @@
           <article class="kpi-card" data-kpi="visitors">
             <div class="kpi-header">
               <h2 class="kpi-title">방문자</h2>
+              <span class="kpi-icon" aria-hidden="true">👥</span>
             </div>
             <div class="kpi-value" aria-live="polite"></div>
             <div class="kpi-change"></div>
@@ -44,6 +53,7 @@
           <article class="kpi-card" data-kpi="conversion">
             <div class="kpi-header">
               <h2 class="kpi-title">전환율</h2>
+              <span class="kpi-icon" aria-hidden="true">📊</span>
             </div>
             <div class="kpi-value" aria-live="polite"></div>
             <div class="kpi-change"></div>
@@ -53,6 +63,7 @@
           <article class="kpi-card" data-kpi="new-customers">
             <div class="kpi-header">
               <h2 class="kpi-title">신규고객</h2>
+              <span class="kpi-icon" aria-hidden="true">🆕</span>
             </div>
             <div class="kpi-value" aria-live="polite"></div>
             <div class="kpi-change"></div>
@@ -86,6 +97,13 @@
           </table>
         </div>
       </section>
+    </div>
+
+    <!-- 로딩 스피너 overlay -->
+    <div id="loadingSpinner" class="loading-overlay" aria-hidden="true" hidden>
+      <div class="loading-spinner" role="status">
+        <span class="visually-hidden">데이터를 불러오는 중...</span>
+      </div>
     </div>
 
     <!-- App 스크립트 (Vite 모듈 시스템 사용) -->

@@ -10,6 +10,71 @@ const METRICS_TABLE =
   String(import.meta.env.VITE_SUPABASE_METRICS_TABLE ?? '').trim() ||
   'dashboard_data';
 
+/** 메모리 캐시 — 5분 TTL */
+const dataCache = {
+  data: null,
+  timestamp: null,
+  ttl: 5 * 60 * 1000,
+};
+
+/**
+ * 캐시에 유효한 데이터가 있으면 반환, 없으면 null
+ * @returns {Array|null}
+ */
+function getCachedData() {
+  if (dataCache.data && Date.now() - dataCache.timestamp < dataCache.ttl) {
+    return dataCache.data;
+  }
+  return null;
+}
+
+/**
+ * 데이터를 캐시에 저장
+ * @param {Array} data
+ */
+function setCachedData(data) {
+  dataCache.data = data;
+  dataCache.timestamp = Date.now();
+}
+
+/** 캐시를 강제 무효화 (필터 변경 시 사용) */
+export function invalidateCache() {
+  dataCache.data = null;
+  dataCache.timestamp = null;
+}
+
+/**
+ * 커스텀 날짜 범위로 데이터를 조회합니다 (캐시 미사용).
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @returns {Promise<Array|null>}
+ */
+export async function fetchSupabaseDataByRange(startDate, endDate) {
+  if (!supabase) {
+    console.warn('[Supabase] 클라이언트가 초기화되지 않음.');
+    return null;
+  }
+
+  try {
+    console.log(`[Supabase] 커스텀 범위 조회: ${startDate} ~ ${endDate}`);
+    const { data, error } = await supabase
+      .from(METRICS_TABLE)
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: true });
+
+    if (error) {
+      console.error('[Supabase] 커스텀 범위 조회 실패:', error);
+      return null;
+    }
+    return data ?? null;
+  } catch (e) {
+    console.error('[Supabase] 커스텀 범위 예외:', e);
+    return null;
+  }
+}
+
 /** @param {Date} date */
 function formatLocalYmd(date) {
   const year = date.getFullYear();
@@ -20,6 +85,7 @@ function formatLocalYmd(date) {
 
 /**
  * Supabase 메트릭 테이블에서 「현재 N일 + 직전 동일 N일」비교에 필요한 행을 가져옵니다.
+ * 5분 TTL 메모리 캐시 사용. 실패 시 최대 3회 재시도.
  * @param {number} days - 한 구간의 일수 (7, 30, 90). 총 약 2×N일치 날짜 범위.
  * @returns {Promise<Array|null>}
  */
@@ -29,46 +95,62 @@ export async function fetchSupabaseData(days = 7) {
     return null;
   }
 
-  try {
-    const today = new Date();
-    const rangeStart = new Date(today);
-    // 직전 N일 구간 시작 = 오늘에서 (2N-1)일 전 — 현재 N일 + 직전 N일 한 번에 조회
-    rangeStart.setDate(rangeStart.getDate() - (2 * days - 1));
-
-    const startDateStr = formatLocalYmd(rangeStart);
-    const todayStr = formatLocalYmd(today);
-
-    console.log(
-      `[Supabase] 테이블 "${METRICS_TABLE}" — ${days}일×2구간 조회: ${startDateStr} ~ ${todayStr}`,
-    );
-
-    const { data, error } = await supabase
-      .from(METRICS_TABLE)
-      .select('*')
-      .gte('date', startDateStr)
-      .lte('date', todayStr)
-      .order('date', { ascending: true }); // 오름차순: 오래된 것부터
-
-    if (error) {
-      console.error('[Supabase] 쿼리 실패:', error);
-      return null;
-    }
-
-    if (!data || data.length === 0) {
-      console.warn(`[Supabase] ${startDateStr}~${todayStr} 범위에 데이터가 없습니다.`);
-      return null;
-    }
-
-    console.log(`[Supabase] ${days}일 데이터 로드 성공:`, {
-      rowCount: data.length,
-      dateRange: `${data[0].date} ~ ${data[data.length - 1].date}`,
-      data: data,
-    });
-    return data;
-  } catch (e) {
-    console.error('[Supabase] 예외 발생:', e);
-    return null;
+  // 캐시 히트 확인
+  const cached = getCachedData();
+  if (cached) {
+    console.log('[Supabase] 캐시에서 데이터 반환');
+    return cached;
   }
+
+  const today = new Date();
+  const rangeStart = new Date(today);
+  rangeStart.setDate(rangeStart.getDate() - (2 * days - 1));
+
+  const startDateStr = formatLocalYmd(rangeStart);
+  const todayStr = formatLocalYmd(today);
+
+  const MAX_RETRY = 3;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRY; attempt += 1) {
+    try {
+      console.log(
+        `[Supabase] 테이블 "${METRICS_TABLE}" — ${days}일×2구간 조회: ${startDateStr} ~ ${todayStr} (시도 ${attempt}/${MAX_RETRY})`,
+      );
+
+      const { data, error } = await supabase
+        .from(METRICS_TABLE)
+        .select('*')
+        .gte('date', startDateStr)
+        .lte('date', todayStr)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.warn(`[Supabase] 쿼리 실패 (시도 ${attempt}):`, error);
+        lastError = error;
+        continue;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn(`[Supabase] ${startDateStr}~${todayStr} 범위에 데이터가 없습니다.`);
+        return null;
+      }
+
+      console.log(`[Supabase] ${days}일 데이터 로드 성공:`, {
+        rowCount: data.length,
+        dateRange: `${data[0].date} ~ ${data[data.length - 1].date}`,
+      });
+
+      setCachedData(data);
+      return data;
+    } catch (e) {
+      console.warn(`[Supabase] 예외 발생 (시도 ${attempt}):`, e);
+      lastError = e;
+    }
+  }
+
+  console.error('[Supabase] 최대 재시도 횟수 초과:', lastError);
+  return null;
 }
 
 /**
