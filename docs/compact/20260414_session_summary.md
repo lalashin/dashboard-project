@@ -787,3 +787,75 @@ function setActiveFilter(days) {
 3. 스크린샷(PC/모바일) 촬영 후 README.md에 추가 (추후)
 
 **마지막 업데이트**: 2026-04-15 (세션 7차 compact 이후)
+
+---
+
+---
+
+## 🔄 세션 8차 진행 경과 (PDCA 현황 확인, vite.config.js 커밋/푸시, 필터 버튼 날짜 인풋 초기화 버그 수정)
+
+**세션 날짜**: 2026-04-15  
+**세션 ID**: 8차 (compact 이후 재개)
+
+### 세션 목표 및 결과
+
+| 항목 | 내용 |
+|------|------|
+| **주요 목표** | PDCA 현황 확인, vite.config.js 커밋/푸시, 필터 버튼 날짜 인풋 초기화 버그 수정 |
+| **최종 상태** | vite.config.js 커밋/푸시 ✅, 날짜 인풋 초기화 버그 수정 커밋/푸시 ✅ |
+
+### 주요 작업 타임라인
+
+1. **PDCA 현황 확인 (`/pdca status`)**
+   - dashboard: `archived` (Match Rate 90%, iterationCount 1) ✅
+   - scripts, dashboard-project: bkit 자동 등록 항목 (실제 기능 아님, 무시)
+
+2. **`vite.config.js` 커밋 및 푸시**
+   - 커밋 메시지: `chore(config): vite define 블록 제거 (로컬 .env 자동 읽기)`
+   - 커밋 해시: `f7df4dc`
+   - 푸시: `origin master` 성공
+
+3. **필터 버튼 날짜 인풋 초기화 버그 수정**
+   - **증상**: 커스텀 날짜 선택 → 조회 후, 7일/30일/90일 빠른 필터 버튼 클릭 시 `#startDate`, `#endDate` 인풋에 이전 날짜값이 남아 있음
+   - **원인**: `setupFilterButtons()`의 `.filter-btn[data-days]` 클릭 핸들러에 인풋 초기화 코드 없음
+   - **수정 위치**: `scripts/app.js` — `setupFilterButtons()` 내 버튼 클릭 이벤트
+   - **추가된 코드**:
+     ```js
+     button.addEventListener('click', async (event) => {
+       event.preventDefault();
+       const days = parseInt(event.target.dataset.days, 10);
+
+       // 커스텀 날짜 인풋 초기화
+       const startEl = document.getElementById('startDate');
+       const endEl = document.getElementById('endDate');
+       if (startEl) startEl.value = '';
+       if (endEl) endEl.value = '';
+
+       setActiveFilter(days);
+       invalidateCache();
+       await loadDashboardByDays(days);
+     });
+     ```
+   - **커밋 메시지**: `fix(filter): 빠른 필터 클릭 시 커스텀 날짜 인풋 초기화`
+   - **커밋 해시**: `bfcd066`
+   - **푸시**: `origin master` 성공
+
+### 현재 미커밋 파일 상태
+
+| 파일 | 변경 내용 | 상태 |
+|------|-----------|------|
+| `docs/compact/20260414_session_summary.md` | 세션 8차 내용 추가 | ⏳ 미커밋 |
+
+### 주요 오류 및 해결책
+
+| 오류 | 원인 | 해결 |
+|------|------|------|
+| 빠른 필터 클릭 후 날짜 인풋 미초기화 | 클릭 핸들러에 `startDate`, `endDate` 초기화 코드 없음 | 핸들러에 `value = ''` 3줄 추가 |
+
+### 다음 세션 재개 가이드
+
+1. `docs/compact/20260414_session_summary.md` 커밋 여부 사용자 확인
+2. 스크린샷(PC/모바일) 촬영 후 README.md에 추가 (추후)
+3. 다음 실습 주제 사용자 안내 대기
+
+**마지막 업데이트**: 2026-04-15 (세션 8차 compact 이후)
