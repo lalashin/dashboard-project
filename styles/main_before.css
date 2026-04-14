@@ -1,0 +1,257 @@
+/* 대시보드 기본 스타일 — 다크 테마, KPI 그리드, 차트·테이블 공통 */
+
+:root {
+  --bg-page: #1a1a2e;
+  --text-primary: #eee;
+  --text-muted: #a8a8b8;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-border: rgba(255, 255, 255, 0.1);
+  --accent: #2dd4bf;
+  --radius: 12px;
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --max-content: 1200px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.dashboard {
+  max-width: var(--max-content);
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+/* 헤더 */
+.dashboard-header {
+  margin-bottom: 1.75rem;
+  text-align: center;
+}
+
+.dashboard-title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+/* 필터 버튼 */
+.filter-section {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.filter-buttons {
+  display: inline-flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.filter-btn {
+  appearance: none;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(45, 212, 191, 0.45);
+}
+
+.filter-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* KPI — 데스크톱 4열 */
+.kpi-section {
+  margin-bottom: 2rem;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.kpi-card {
+  padding: 1.1rem 1.15rem;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+}
+
+.kpi-header {
+  margin-bottom: 0.65rem;
+}
+
+.kpi-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.kpi-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  min-height: 1.5em; /* 빈 상태에서도 레이아웃 유지 */
+}
+
+.kpi-change {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  min-height: 1.25em;
+}
+
+.kpi-label {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-height: 1.2em;
+}
+
+/* 차트 — 중앙 정렬, 반응형 */
+.chart-section {
+  margin-bottom: 2rem;
+}
+
+.chart-title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.chart-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+  min-height: 280px;
+}
+
+.chart-wrap canvas {
+  display: block;
+  max-width: 100%;
+  height: auto !important;
+}
+
+/* 테이블 — 줄무늬 + hover */
+.table-section {
+  margin-bottom: 1rem;
+}
+
+.table-title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.metrics-table thead {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.metrics-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.metrics-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.metrics-table tbody tr:hover {
+  background: rgba(45, 212, 191, 0.12);
+}
+
+.metrics-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 768px 이하: KPI 2열 */
+@media (max-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi-value {
+    font-size: 1.25rem;
+  }
+
+  .chart-wrap {
+    min-height: 220px;
+    padding: 0.75rem;
+  }
+
+  .metrics-table th,
+  .metrics-table td {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.8125rem;
+  }
+}
