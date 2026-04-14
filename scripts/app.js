@@ -179,10 +179,11 @@ function renderTrendTable(json) {
 }
 
 /**
- * Supabase dashboard_data 테이블에서 데이터를 가져옵니다.
+ * Supabase dashboard_data 테이블에서 지정한 일수만큼 데이터를 가져옵니다.
+ * @param {number} days - 조회할 일수 (7, 30, 90)
  * @returns {Promise<Array|null>}
  */
-async function fetchSupabaseData() {
+async function fetchSupabaseData(days = 7) {
   if (!supabase) {
     console.warn('[Supabase] 클라이언트가 초기화되지 않음. sample.json으로 폴백합니다.');
     return null;
@@ -192,15 +193,23 @@ async function fetchSupabaseData() {
     const { data, error } = await supabase
       .from('dashboard_data')
       .select('*')
-      .order('date', { ascending: false })
-      .limit(7);
+      .order('date', { ascending: true })  // 오름차순: 오래된 것부터
+      .limit(days);  // 지정한 일수만큼 조회
 
     if (error) {
       console.error('[Supabase] 쿼리 실패:', error);
       return null;
     }
 
-    console.log('[Supabase] 데이터 로드 성공:', data);
+    if (!data || data.length === 0) {
+      console.warn('[Supabase] 반환된 데이터가 없습니다.');
+      return null;
+    }
+
+    console.log(`[Supabase] ${days}일 데이터 로드 성공:`, {
+      rowCount: data.length,
+      dateRange: `${data[0].date} ~ ${data[data.length - 1].date}`,
+    });
     return data;
   } catch (e) {
     console.error('[Supabase] 예외 발생:', e);
@@ -495,12 +504,16 @@ function renderRevenueChart(json) {
 }
 
 /**
+ * 지정된 일수의 데이터로 대시보드를 렌더링합니다.
+ * @param {number} days - 조회할 일수 (7, 30, 90)
  * @returns {Promise<void>}
  */
-async function initDashboard() {
+async function loadDashboardByDays(days = 7) {
   try {
+    console.log(`[App] ${days}일 데이터로 대시보드 로드 시작...`);
+
     // Step 1: Supabase에서 데이터 시도
-    const supabaseData = await fetchSupabaseData();
+    const supabaseData = await fetchSupabaseData(days);
 
     if (supabaseData && supabaseData.length > 0) {
       // Step 2: Supabase 데이터 변환 및 렌더링
@@ -509,6 +522,7 @@ async function initDashboard() {
         renderKpiCards(json);
         renderTrendTable(json);
         renderRevenueChart(json);
+        console.log(`[App] ${days}일 데이터 렌더링 완료`);
         return;
       }
     }
@@ -524,7 +538,45 @@ async function initDashboard() {
     renderTrendTable(json);
     renderRevenueChart(json);
   } catch (e) {
-    console.error('[App] 초기화 실패:', e);
+    console.error('[App] 데이터 로드 실패:', e);
+  }
+}
+
+/**
+ * 초기 대시보드 로드
+ * @returns {Promise<void>}
+ */
+async function initDashboard() {
+  // 기본값: 7일 데이터로 시작
+  await loadDashboardByDays(7);
+
+  // 필터 버튼 이벤트 리스너 등록
+  setupFilterButtons();
+}
+
+/**
+ * 필터 버튼에 이벤트 리스너를 등록합니다.
+ */
+function setupFilterButtons() {
+  const filterButtons = document.querySelectorAll('.filter-btn');
+
+  filterButtons.forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      const days = parseInt(event.target.dataset.days, 10);
+
+      // 활성 버튼 스타일 변경
+      filterButtons.forEach((btn) => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // 데이터 로드
+      await loadDashboardByDays(days);
+    });
+  });
+
+  // 초기 활성 버튼 설정 (7일)
+  const firstButton = document.querySelector('.filter-btn[data-days="7"]');
+  if (firstButton) {
+    firstButton.classList.add('active');
   }
 }
 
