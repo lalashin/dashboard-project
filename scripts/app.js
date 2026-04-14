@@ -180,6 +180,7 @@ function renderTrendTable(json) {
 
 /**
  * Supabase dashboard_data 테이블에서 데이터를 가져옵니다.
+ * 최근 14일 데이터를 조회하여 더 상세한 트렌드를 표시합니다.
  * @returns {Promise<Array|null>}
  */
 async function fetchSupabaseData() {
@@ -189,21 +190,33 @@ async function fetchSupabaseData() {
   }
 
   try {
+    // 14일치 데이터를 가장 오래된 것부터 가져옴
     const { data, error } = await supabase
       .from('dashboard_data')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(7);
+      .select('id, date, revenue, visitors, conversion_rate, new_customers')
+      .order('date', { ascending: true })  // 오름차순: 오래된 것부터
+      .limit(14);  // 14일 데이터
 
     if (error) {
       console.error('[Supabase] 쿼리 실패:', error);
+      console.error('[Supabase] 에러 상세:', error.message);
       return null;
     }
 
-    console.log('[Supabase] 데이터 로드 성공:', data);
+    if (!data || data.length === 0) {
+      console.warn('[Supabase] 반환된 데이터가 없습니다. 테이블이 비어있는지 확인하세요.');
+      return null;
+    }
+
+    console.log('[Supabase] 데이터 로드 성공:', {
+      rowCount: data.length,
+      dateRange: `${data[0].date} ~ ${data[data.length - 1].date}`,
+      data: data
+    });
     return data;
   } catch (e) {
-    console.error('[Supabase] 예외 발생:', e);
+    console.error('[Supabase] 예외 발생:', e.message);
+    console.error('[Supabase] 스택트레이스:', e.stack);
     return null;
   }
 }
@@ -314,51 +327,72 @@ function renderRevenueChart(json) {
   }
 
   window.revenueChartInstance = new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
       labels,
       datasets: [
         {
           label: '매출',
           data: revenueValues,
-          borderColor: '#a78bfa',
-          backgroundColor: 'rgba(167, 139, 250, 0.22)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: '#a78bfa',
-          pointBorderColor: '#1a1a2e',
-          pointBorderWidth: 2,
+          backgroundColor: [
+            'rgba(167, 139, 250, 0.8)',   // 보라색
+            'rgba(236, 72, 153, 0.8)',    // 분홍색
+            'rgba(59, 130, 246, 0.8)',    // 파란색
+            'rgba(34, 197, 94, 0.8)',     // 초록색
+            'rgba(249, 115, 22, 0.8)',    // 주황색
+            'rgba(245, 158, 11, 0.8)',    // 황색
+            'rgba(168, 85, 247, 0.8)',    // 자주색
+            'rgba(14, 165, 233, 0.8)',    // 하늘색
+            'rgba(236, 72, 153, 0.8)',    // 분홍색
+            'rgba(59, 130, 246, 0.8)',    // 파란색
+            'rgba(34, 197, 94, 0.8)',     // 초록색
+            'rgba(249, 115, 22, 0.8)',    // 주황색
+            'rgba(245, 158, 11, 0.8)',    // 황색
+            'rgba(168, 85, 247, 0.8)',    // 자주색
+          ],
+          borderColor: '#1a1a2e',
+          borderWidth: 1,
+          borderRadius: 6,
+          hoverBackgroundColor: 'rgba(255, 255, 255, 0.3)',
+          hoverBorderColor: '#fff',
+          hoverBorderWidth: 2,
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      aspectRatio: 2,
+      aspectRatio: 2.5,
+      indexAxis: 'x',
       interaction: {
-        mode: 'index',
+        mode: 'point',
         intersect: false,
       },
       plugins: {
         legend: {
+          display: true,
           labels: {
             color: '#eee',
-            font: { size: 12 },
+            font: { size: 12, weight: 'bold' },
+            padding: 15,
           },
         },
         tooltip: {
-          backgroundColor: 'rgba(26, 26, 46, 0.95)',
-          titleColor: '#eee',
-          bodyColor: '#eee',
-          borderColor: 'rgba(167, 139, 250, 0.4)',
-          borderWidth: 1,
+          enabled: true,
+          backgroundColor: 'rgba(26, 26, 46, 0.98)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: 'rgba(167, 139, 250, 0.6)',
+          borderWidth: 2,
+          padding: 10,
+          displayColors: true,
           callbacks: {
+            title(ctx) {
+              return `📅 ${ctx[0].label}`;
+            },
             label(ctx) {
               const v = ctx.parsed.y;
-              return v != null ? `매출: ${Number(v).toLocaleString('ko-KR')}원` : '';
+              return v != null ? `💰 매출: ${Number(v).toLocaleString('ko-KR')}원` : '';
             },
           },
         },
@@ -366,12 +400,13 @@ function renderRevenueChart(json) {
       scales: {
         x: {
           grid: {
-            color: 'rgba(255, 255, 255, 0.08)',
+            color: 'rgba(255, 255, 255, 0.06)',
             drawBorder: false,
+            display: true,
           },
           ticks: {
             color: '#a8a8b8',
-            maxRotation: 0,
+            font: { size: 11 },
           },
         },
         y: {
@@ -381,6 +416,7 @@ function renderRevenueChart(json) {
           },
           ticks: {
             color: '#a8a8b8',
+            font: { size: 11 },
             callback: (raw) => {
               const value = Number(raw);
               if (value >= 100000000) {
